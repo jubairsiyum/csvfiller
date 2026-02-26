@@ -1,0 +1,32 @@
+{
+  "name": "bulk-pdf-form-generator",
+  "version": "1.0.0",
+  "description": "Production-ready bulk PDF form generator from CSV data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "create-template": "node scripts/createSamplePdf.js",
+    "lint": "eslint src/**/*.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1",
+    "uuid": "^10.0.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "keywords": ["pdf", "csv", "bulk", "forms", "generator"],
+  "author": "",
+  "license": "MIT"
+}

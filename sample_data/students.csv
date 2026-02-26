@@ -1,0 +1,11 @@
+full_name,date_of_birth,app_id,email,phone,address,city,state,postal_code,course
+Alice Johnson,1998-04-12,APP-1001,alice.johnson@example.com,555-0101,123 Maple St,Springfield,IL,62701,Computer Science
+Bob Martinez,1997-09-25,APP-1002,bob.martinez@example.com,555-0102,456 Oak Ave,Shelbyville,IL,62565,Business Administration
+Carol White,1999-01-30,APP-1003,carol.white@example.com,555-0103,789 Pine Rd,Capital City,IL,62702,Engineering
+David Kim,2000-07-18,APP-1004,david.kim@example.com,555-0104,321 Elm Dr,Ogdenville,IL,62703,Mathematics
+Eva Nguyen,1998-11-03,APP-1005,eva.nguyen@example.com,555-0105,654 Birch Ln,North Haverbrook,IL,62704,Physics
+Frank Patel,1999-05-22,APP-1006,frank.patel@example.com,555-0106,987 Cedar Blvd,Brockway,IL,62705,Chemistry
+Grace Lee,2001-02-14,APP-1007,grace.lee@example.com,555-0107,147 Walnut Way,Springfield,IL,62701,Law
+Henry Brown,1997-08-07,APP-1008,henry.brown@example.com,555-0108,258 Chestnut Ct,Shelbyville,IL,62565,Medicine
+Isabella Clark,2000-12-20,APP-1009,isabella.clark@example.com,555-0109,369 Spruce St,Capital City,IL,62702,Architecture
+James Wilson,1998-03-15,APP-1010,james.wilson@example.com,555-0110,741 Fir Ave,Ogdenville,IL,62703,Economics
