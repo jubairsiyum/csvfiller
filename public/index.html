@@ -353,10 +353,8 @@
 ══════════════════════════════════════════════════════════════════════ -->
 <div id="toast-container"></div>
 
-<!-- PDF.js from CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
-        integrity="sha512-q+4lVQPnplKJInAMTOLxNPqXeqGVQWmm+GfmgS+SiVBQsMaUbSGWKPEHCOMrLBkHGjm1GHQpZgZSTenh7Dtg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- PDF.js served locally from node_modules (no CDN needed) -->
+<script src="/pdfjs/pdf.min.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

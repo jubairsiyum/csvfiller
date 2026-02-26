@@ -397,10 +397,9 @@ const Editor = {
       // Load PDF.js document
       const pdfUrl = `/api/templates/${templateId}/pdf` + (state.token ? `?token=${encodeURIComponent(state.token)}` : '');
       if (typeof pdfjsLib === 'undefined') {
-        throw new Error('PDF.js library failed to load from CDN. Check your internet connection.');
+        throw new Error('PDF.js failed to load. Please refresh the page.');
       }
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.js';
 
       const loadingTask = pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false });
       state.editor.pdfDoc   = await loadingTask.promise;

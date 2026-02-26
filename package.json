@@ -20,13 +20,20 @@
     "helmet": "^8.0.0",
     "multer": "^1.4.5-lts.1",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^3.11.174",
     "uuid": "^10.0.0",
     "winston": "^3.13.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
   },
-  "keywords": ["pdf", "csv", "bulk", "forms", "generator"],
+  "keywords": [
+    "pdf",
+    "csv",
+    "bulk",
+    "forms",
+    "generator"
+  ],
   "author": "",
   "license": "MIT"
 }

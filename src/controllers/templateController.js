@@ -4,7 +4,6 @@
 
 'use strict';
 
-const fs   = require('fs');
 const path = require('path');
 
 const config           = require('../config/config');
@@ -103,26 +102,31 @@ function deleteTemplate(req, res) {
 }
 
 // ── GET /api/templates/:id/pdf ─────────────────────────────────────────────
-// Serve the raw PDF bytes for rendering in the browser via PDF.js
+// Serve the raw PDF bytes for rendering in the browser via PDF.js.
+// Uses res.sendFile() so Express sets Content-Length and handles Range
+// requests — both required for PDF.js to load documents correctly.
 function servePdf(req, res, next) {
-  try {
-    const template = templateService.getTemplate(req.params.id);
-    if (!template) return res.status(404).json({ error: 'Template not found' });
+  const template = templateService.getTemplate(req.params.id);
+  if (!template) return res.status(404).json({ error: 'Template not found' });
 
-    const pdfPath = path.join(config.templatesDir, template.filename);
-    if (!fs.existsSync(pdfPath)) {
-      return res.status(404).json({ error: 'PDF file not found on disk' });
+  const pdfPath = path.join(config.templatesDir, template.filename);
+
+  res.sendFile(pdfPath, {
+    headers: {
+      'Content-Type':        'application/pdf',
+      'Content-Disposition': `inline; filename="${template.filename}"`,
+    },
+  }, (err) => {
+    if (err) {
+      // sendFile calls next(err) itself only if headers not sent yet
+      if (!res.headersSent) {
+        next(err.status === 404
+          ? Object.assign(new Error('PDF file not found on disk'), { statusCode: 404 })
+          : err
+        );
+      }
     }
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${template.filename}"`);
-    // Allow PDF.js running on the same origin to load this
-    res.setHeader('Access-Control-Allow-Origin', '*');
-
-    fs.createReadStream(pdfPath).pipe(res);
-  } catch (err) {
-    next(err);
-  }
+  });
 }
 
 module.exports = {

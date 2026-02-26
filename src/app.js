@@ -42,6 +42,11 @@ app.use((req, _res, next) => {
 // ── Static assets (optional front-end) ────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// ── Serve PDF.js from local node_modules (no CDN dependency) ──────────────
+app.use('/pdfjs', express.static(
+  path.join(__dirname, '..', 'node_modules', 'pdfjs-dist', 'build')
+));
+
 // ── API routes ─────────────────────────────────────────────────────────────
 app.use('/api', pdfRoutes);
 app.use('/api/templates', templateRoutes);
