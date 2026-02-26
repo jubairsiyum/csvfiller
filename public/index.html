@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Form Generator</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Sidebar ────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>PDF Generator</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="templates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Templates
+      </button>
+      <button class="nav-item" data-view="generator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Batch Generator
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-status" id="sidebar-status">
+        <span class="status-dot"></span>
+        <span id="status-text">Ready</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main area ──────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="back-btn hidden" id="btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h1 class="page-title" id="page-title">Templates</h1>
+      </div>
+      <div class="topbar-right" id="topbar-actions"></div>
+    </header>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ─── VIEW: Template List ─────────────────────────────────── -->
+      <section id="view-templates" class="view active">
+        <div class="section-header">
+          <p class="section-desc">Upload fillable PDF forms, map fields to CSV columns, then generate bulk PDFs.</p>
+          <button class="btn btn-primary" id="btn-upload-template">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Upload Template
+          </button>
+        </div>
+        <div class="template-grid" id="template-grid">
+          <div class="loading-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="spin"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+            Loading templates…
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── VIEW: Template Editor ──────────────────────────────── -->
+      <section id="view-editor" class="view hidden">
+        <div class="editor-layout">
+
+          <!-- PDF panel -->
+          <div class="pdf-panel">
+            <div class="pdf-toolbar">
+              <div class="page-nav">
+                <button class="icon-btn" id="btn-prev-page" disabled title="Previous page">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span id="page-indicator">Page 1 / 1</span>
+                <button class="icon-btn" id="btn-next-page" disabled title="Next page">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <div class="zoom-controls">
+                <button class="icon-btn" id="btn-zoom-out" title="Zoom out">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                </button>
+                <span id="zoom-level">100%</span>
+                <button class="icon-btn" id="btn-zoom-in" title="Zoom in">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                </button>
+              </div>
+              <div class="pdf-toolbar-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Click a highlighted field to map it
+              </div>
+            </div>
+            <div class="pdf-viewport-wrapper" id="pdf-viewport-wrapper">
+              <div class="pdf-viewport" id="pdf-viewport">
+                <canvas id="pdf-canvas"></canvas>
+                <div id="field-overlay" class="field-overlay"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fields panel -->
+          <div class="fields-panel">
+            <div class="fields-panel-header">
+              <h3>AcroForm Fields</h3>
+              <span class="badge" id="field-count-badge">0 fields</span>
+            </div>
+            <div class="fields-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="field-search" placeholder="Search fields…" />
+            </div>
+            <div class="fields-list" id="fields-list"></div>
+            <div class="fields-panel-footer">
+              <button class="btn btn-secondary" id="btn-auto-map">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                Auto-map (same name)
+              </button>
+              <button class="btn btn-primary" id="btn-save-mapping">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Save Mappings
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ─── VIEW: Batch Generator ──────────────────────────────── -->
+      <section id="view-generator" class="view hidden">
+        <div class="generator-layout">
+
+          <!-- Step 1: Select template -->
+          <div class="gen-step" id="gen-step-1">
+            <div class="step-header">
+              <span class="step-number">1</span>
+              <h3>Select Template</h3>
+            </div>
+            <div class="step-body">
+              <select class="form-select" id="gen-template-select">
+                <option value="">— Choose a template —</option>
+              </select>
+              <div class="template-preview-card hidden" id="template-preview-card">
+                <div class="tpc-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div class="tpc-info">
+                  <strong id="tpc-name">—</strong>
+                  <span id="tpc-fields">0 fields mapped</span>
+                </div>
+                <button class="btn btn-xs btn-ghost" id="btn-tpc-edit">Edit Mapping</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Upload CSV -->
+          <div class="gen-step" id="gen-step-2">
+            <div class="step-header">
+              <span class="step-number">2</span>
+              <h3>Upload CSV Data</h3>
+            </div>
+            <div class="step-body">
+              <div class="drop-zone" id="csv-drop-zone">
+                <input type="file" id="csv-file-input" accept=".csv" class="hidden" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p>Drop your CSV file here or <span class="link">browse</span></p>
+                <small>Max file size: 5 MB</small>
+              </div>
+              <div class="csv-info hidden" id="csv-info">
+                <div class="csv-info-row">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span id="csv-info-text">—</span>
+                  <button class="btn btn-xs btn-ghost" id="btn-csv-clear">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Mapping preview -->
+          <div class="gen-step" id="gen-step-3">
+            <div class="step-header">
+              <span class="step-number">3</span>
+              <h3>Field Mapping Preview</h3>
+            </div>
+            <div class="step-body">
+              <div class="mapping-preview" id="mapping-preview">
+                <p class="placeholder-text">Select a template with saved mappings to preview.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: Generate -->
+          <div class="gen-step" id="gen-step-4">
+            <div class="step-header">
+              <span class="step-number">4</span>
+              <h3>Generate &amp; Download</h3>
+            </div>
+            <div class="step-body">
+              <button class="btn btn-primary btn-lg" id="btn-generate" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Generate PDFs
+              </button>
+
+              <!-- Progress -->
+              <div class="progress-block hidden" id="progress-block">
+                <div class="progress-bar-wrap">
+                  <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+                </div>
+                <div class="progress-meta">
+                  <span id="progress-text">Preparing…</span>
+                  <span id="progress-pct">0%</span>
+                </div>
+              </div>
+
+              <!-- Summary -->
+              <div class="gen-summary hidden" id="gen-summary">
+                <div class="summary-stat success">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <strong id="sum-success">0</strong><span>Generated</span>
+                </div>
+                <div class="summary-stat error">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <strong id="sum-failed">0</strong><span>Failed</span>
+                </div>
+                <div class="summary-stat neutral">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  <strong id="sum-total">0</strong><span>Total</span>
+                </div>
+              </div>
+
+              <button class="btn btn-success btn-lg hidden" id="btn-download">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download ZIP
+              </button>
+
+              <div class="error-list hidden" id="error-list">
+                <h4>Errors</h4>
+                <ul id="error-items"></ul>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- .content -->
+  </div><!-- .main -->
+</div><!-- #app -->
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════════════════════ -->
+<div id="modal-overlay" class="modal-overlay hidden">
+
+  <!-- Upload template modal -->
+  <div id="modal-upload" class="modal hidden">
+    <div class="modal-header">
+      <h2>Upload PDF Template</h2>
+      <button class="icon-btn modal-close" data-close="modal-upload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="upload-name">Template Name</label>
+        <input type="text" id="upload-name" class="form-input" placeholder="e.g. Student Application Form" />
+      </div>
+      <div class="form-group">
+        <label>PDF File <span class="req">*</span></label>
+        <div class="drop-zone small" id="pdf-drop-zone">
+          <input type="file" id="pdf-file-input" accept=".pdf" class="hidden" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <p>Drop PDF here or <span class="link">browse</span></p>
+          <small id="pdf-selected-name">No file selected</small>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-upload">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-upload" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload &amp; Detect Fields
+      </button>
+    </div>
+  </div>
+
+  <!-- Field mapping modal -->
+  <div id="modal-field" class="modal hidden">
+    <div class="modal-header">
+      <h2>Map PDF Field</h2>
+      <button class="icon-btn modal-close" data-close="modal-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-info-card">
+        <div class="fi-row"><label>PDF Field Name</label><strong id="fi-name">—</strong></div>
+        <div class="fi-row"><label>Field Type</label><span class="badge" id="fi-type">—</span></div>
+        <div class="fi-row"><label>Page</label><span id="fi-page">—</span></div>
+      </div>
+      <div class="form-group">
+        <label for="fi-csv-col">CSV Column Name <span class="req">*</span></label>
+        <input type="text" id="fi-csv-col" class="form-input"
+               placeholder="e.g. full_name, date_of_birth, app_id" />
+        <small class="input-hint">Enter the exact CSV column header this field should read from.</small>
+      </div>
+      <div class="csv-columns-hint hidden" id="csv-columns-hint">
+        <label>Available columns (last uploaded CSV):</label>
+        <div class="col-chips" id="csv-col-chips"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-danger" id="btn-clear-field-mapping">Clear mapping</button>
+      <button class="btn btn-ghost" data-close="modal-field">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-field-mapping">Apply</button>
+    </div>
+  </div>
+
+  <!-- Confirm delete modal -->
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-header">
+      <h2 id="confirm-title">Confirm</h2>
+      <button class="icon-btn modal-close" data-close="modal-confirm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message">Are you sure?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="modal-confirm">Cancel</button>
+      <button class="btn btn-danger" id="btn-confirm-action">Delete</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+══════════════════════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- PDF.js from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+        integrity="sha512-q+4lVQPnplKJInAMTOLxNPqXeqGVQWmm+GfmgS+SiVBQsMaUbSGWKPEHCOMrLBkHGjm1GHQpZgZSTenh7Dtg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

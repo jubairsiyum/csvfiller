@@ -20,7 +20,7 @@
 
 const fs   = require('fs');
 const path = require('path');
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, PDFName, rgb } = require('pdf-lib');
 
 const config = require('../config/config');
 const logger = require('../utils/logger');
@@ -225,4 +225,106 @@ function sanitiseFilename(name) {
     .slice(0, 80);                       // cap length
 }
 
-module.exports = { processBatch, getTemplateFields, detectPdfFields, sanitiseFilename };
+/**
+ * Inspect a PDF file and return all AcroForm fields with their page positions.
+ * Positions are in PDF-point coordinates with the Y axis flipped to top-left
+ * origin so they align with PDF.js rendering coordinates.
+ *
+ * @param {string} pdfPath — Absolute path to a PDF file
+ * @returns {Promise<Array<{
+ *   name: string,
+ *   type: string,
+ *   page: number,
+ *   rect: { x, y, width, height, pageWidth, pageHeight } | null
+ * }>>}
+ */
+async function getFieldsWithPositions(pdfPath) {
+  const bytes = await fs.promises.readFile(pdfPath);
+  const doc   = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const form  = doc.getForm();
+  const pages = doc.getPages();
+
+  // Build a map keyed by field name
+  const fieldMap = {};
+  for (const field of form.getFields()) {
+    const name = field.getName();
+    fieldMap[name] = {
+      name,
+      type: field.constructor.name.replace(/^PDF/, ''),
+      rect: null,
+      page: 0,
+    };
+  }
+
+  // Walk every page's annotation array to find Widget positions
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+    const page = pages[pageIndex];
+    const { width: pw, height: ph } = page.getSize();
+
+    let annotsArray;
+    try {
+      const annotsRef = page.node.get(PDFName.of('Annots'));
+      if (!annotsRef) continue;
+      const resolved = doc.context.lookup(annotsRef);
+      if (!resolved || !resolved.array) continue;
+      annotsArray = resolved.array;
+    } catch { continue; }
+
+    for (const annotRef of annotsArray) {
+      let annot;
+      try { annot = doc.context.lookup(annotRef); } catch { continue; }
+      if (!annot || typeof annot.get !== 'function') continue;
+
+      // Must be a Widget annotation
+      const subtype = annot.get(PDFName.of('Subtype'));
+      if (!subtype || subtype.toString() !== '/Widget') continue;
+
+      // Resolve field name (may be on the widget or on its parent)
+      let fieldName = null;
+      let T = annot.get(PDFName.of('T'));
+      if (!T) {
+        try {
+          const parentRef = annot.get(PDFName.of('Parent'));
+          if (parentRef) {
+            const parent = doc.context.lookup(parentRef);
+            T = parent && typeof parent.get === 'function' ? parent.get(PDFName.of('T')) : null;
+          }
+        } catch {}
+      }
+      if (!T) continue;
+      fieldName = typeof T.decodeText === 'function' ? T.decodeText() : String(T);
+      if (!fieldMap[fieldName]) continue;
+
+      // Resolve Rect [x1, y1, x2, y2] in PDF pts (bottom-left origin)
+      const rectObj = annot.get(PDFName.of('Rect'));
+      if (!rectObj || !rectObj.array || rectObj.array.length < 4) continue;
+
+      const num = (o) => {
+        if (!o) return 0;
+        if (typeof o.asNumber === 'function') return o.asNumber();
+        if (typeof o.numberValue === 'number') return o.numberValue;
+        return parseFloat(String(o)) || 0;
+      };
+
+      const x1 = num(rectObj.array[0]);
+      const y1 = num(rectObj.array[1]);
+      const x2 = num(rectObj.array[2]);
+      const y2 = num(rectObj.array[3]);
+
+      // Flip Y to match top-left origin (PDF.js coordinate system)
+      fieldMap[fieldName].rect = {
+        x: Math.min(x1, x2),
+        y: ph - Math.max(y1, y2),
+        width:      Math.abs(x2 - x1),
+        height:     Math.abs(y2 - y1),
+        pageWidth:  pw,
+        pageHeight: ph,
+      };
+      fieldMap[fieldName].page = pageIndex;
+    }
+  }
+
+  return Object.values(fieldMap);
+}
+
+module.exports = { processBatch, getTemplateFields, getFieldsWithPositions, detectPdfFields, sanitiseFilename };
