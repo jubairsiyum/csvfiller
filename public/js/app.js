@@ -200,9 +200,15 @@ const View = {
   current: 'templates',
 
   show(name, opts = {}) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => {
+      v.classList.remove('active');
+      v.classList.add('hidden');
+    });
     const el = document.getElementById(`view-${name}`);
-    if (el) el.classList.add('active');
+    if (el) {
+      el.classList.remove('hidden');
+      el.classList.add('active');
+    }
 
     // Sidebar nav highlight
     document.querySelectorAll('.nav-item').forEach(b => {
