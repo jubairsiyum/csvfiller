@@ -818,11 +818,12 @@ const Generator = {
       document.getElementById('progress-text').textContent = 'Generating PDFs…';
       state.generator.status = 'processing';
 
-      // Step 2: Trigger generation
-      await Api.post('/api/generate', { batchId, fieldMapping: mapping });
+      // Step 2: Trigger generation (server responds immediately — bg processing starts)
+      await Api.post('/api/generate', { batchId, templateId, fieldMapping: mapping });
 
-      // Done
-      this.handleComplete(batchId);
+      // Step 3: Poll /api/progress until complete or failed
+      this.startPolling(batchId);
+
     } catch (err) {
       state.generator.status = 'error';
       document.getElementById('progress-text').textContent = 'Failed.';
@@ -832,13 +833,13 @@ const Generator = {
     }
   },
 
-  async handleComplete(batchId) {
-    // Fetch final summary
-    let summary = {};
-    try {
-      const prog = await Api.get(`/api/progress/${batchId}`);
-      summary = prog.summary || {};
-    } catch {}
+  async handleComplete(batchId, summary) {
+    if (!summary) {
+      try {
+        const prog = await Api.get(`/api/progress/${batchId}`);
+        summary = prog.summary || {};
+      } catch { summary = {}; }
+    }
 
     state.generator.status = 'done';
     document.getElementById('progress-bar').style.width = '100%';
@@ -875,6 +876,41 @@ const Generator = {
   resetGenerateButton() {
     document.getElementById('btn-generate').innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate PDFs';
+  },
+
+  startPolling(batchId) {
+    clearInterval(state.generator.pollTimer);
+    state.generator.pollTimer = setInterval(async () => {
+      try {
+        const prog = await Api.get(`/api/progress/${batchId}`);
+
+        // Update progress bar
+        const pct = prog.percent || 0;
+        document.getElementById('progress-bar').style.width  = `${pct}%`;
+        document.getElementById('progress-pct').textContent  = `${pct}%`;
+        if (prog.total) {
+          document.getElementById('progress-text').textContent =
+            `Processing ${prog.done} of ${prog.total}…`;
+        }
+
+        if (prog.status === 'complete') {
+          clearInterval(state.generator.pollTimer);
+          state.generator.pollTimer = null;
+          this.handleComplete(batchId, prog.summary);
+
+        } else if (prog.status === 'failed') {
+          clearInterval(state.generator.pollTimer);
+          state.generator.pollTimer = null;
+          state.generator.status = 'error';
+          document.getElementById('progress-text').textContent = 'Failed.';
+          Toast.error(`Batch processing failed: ${prog.error || 'Unknown error'}`);
+          this.resetGenerateButton();
+          this.updateGenerateBtn();
+        }
+      } catch (_err) {
+        // Network hiccup — keep polling
+      }
+    }, 1000);
   },
 
   init() {

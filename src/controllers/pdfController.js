@@ -14,11 +14,12 @@
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-const config     = require('../config/config');
-const csvService = require('../services/csvService');
-const pdfService = require('../services/pdfService');
-const zipService = require('../services/zipService');
-const logger     = require('../utils/logger');
+const config          = require('../config/config');
+const csvService      = require('../services/csvService');
+const pdfService      = require('../services/pdfService');
+const zipService      = require('../services/zipService');
+const templateService = require('../services/templateService');
+const logger          = require('../utils/logger');
 
 // In-memory progress map — replace with Redis/BullMQ for multi-process setups
 const progressMap = new Map(); // batchId → { done, total, status }
@@ -75,15 +76,19 @@ async function uploadCSV(req, res, next) {
 
 // ── POST /api/generate ─────────────────────────────────────────────────────
 /**
- * Parse the CSV, fill PDFs, store in output/{batchId}/.
+ * Validate input, respond immediately with { status: 'processing' },
+ * then fill PDFs in the background. The client polls /api/progress/:batchId.
  */
 async function generatePDFs(req, res, next) {
   try {
-    const { batchId, fieldMapping } = req.body;
+    const { batchId, templateId, fieldMapping } = req.body;
 
     // ── Validation ──────────────────────────────────────────────────────────
     if (!batchId) {
       return res.status(400).json({ error: '"batchId" is required' });
+    }
+    if (!templateId) {
+      return res.status(400).json({ error: '"templateId" is required' });
     }
     if (!fieldMapping || typeof fieldMapping !== 'object' || Array.isArray(fieldMapping)) {
       return res.status(400).json({ error: '"fieldMapping" must be a non-empty object' });
@@ -100,6 +105,13 @@ async function generatePDFs(req, res, next) {
       return res.status(409).json({ error: 'Batch is already being processed' });
     }
 
+    // ── Resolve template PDF path ────────────────────────────────────────────
+    const template = templateService.getTemplate(templateId);
+    if (!template) {
+      return res.status(404).json({ error: `Template "${templateId}" not found` });
+    }
+    const templatePath = path.join(config.templatesDir, template.filename);
+
     // ── Validate mapping against CSV columns ────────────────────────────────
     const { warnings: mappingWarnings } = csvService.validateFieldMapping(
       fieldMapping,
@@ -109,41 +121,59 @@ async function generatePDFs(req, res, next) {
       logger.warn('Field mapping warnings', { batchId, warnings: mappingWarnings });
     }
 
-    // ── Re-parse CSV (stream) ───────────────────────────────────────────────
-    const { rows } = await csvService.parseCSV(meta.csvPath);
-
-    const batchDir = path.join(config.outputDir, batchId);
-
-    // Mark as processing
+    // ── Mark as processing, respond immediately ──────────────────────────────
     meta.status = 'processing';
     meta.done   = 0;
-    meta.total  = rows.length;
+    meta.total  = meta.rowCount;
     progressMap.set(batchId, meta);
 
-    // Progress callback
-    const onProgress = (done, total) => {
-      meta.done = done;
-      progressMap.set(batchId, meta);
-      logger.debug(`Progress: ${done}/${total}`, { batchId });
-    };
-
-    // ── Process ─────────────────────────────────────────────────────────────
-    const summary = await pdfService.processBatch(rows, fieldMapping, batchDir, onProgress);
-
-    meta.status  = 'complete';
-    meta.summary = summary;
-    progressMap.set(batchId, meta);
-
-    return res.json({
+    res.json({
       batchId,
-      ...summary,
+      status:          'processing',
+      total:           meta.rowCount,
       mappingWarnings,
-      downloadUrl: `/api/download/${batchId}`,
     });
 
+    // ── Background processing ────────────────────────────────────────────────
+    const batchDir = path.join(config.outputDir, batchId);
+
+    setImmediate(async () => {
+      try {
+        // Re-parse CSV from the stored upload
+        const { rows } = await csvService.parseCSV(meta.csvPath);
+        meta.total = rows.length;
+        progressMap.set(batchId, meta);
+
+        const onProgress = (done, total) => {
+          meta.done  = done;
+          meta.total = total;
+          progressMap.set(batchId, meta);
+          logger.debug(`Progress: ${done}/${total}`, { batchId });
+        };
+
+        const summary = await pdfService.processBatch(
+          rows, fieldMapping, batchDir, templatePath, onProgress
+        );
+
+        meta.status  = 'complete';
+        meta.summary = summary;
+        progressMap.set(batchId, meta);
+
+        logger.info('Batch completed', { batchId, total: summary.total, success: summary.success, failed: summary.failed });
+
+      } catch (err) {
+        meta.status = 'failed';
+        meta.error  = err.message;
+        progressMap.set(batchId, meta);
+        logger.error('Batch processing failed', { batchId, message: err.message, stack: err.stack });
+      }
+    });
+
+    // (response already sent — no return value needed)
+
   } catch (err) {
-    // Mark batch as failed so client can retry
-    if (req.body?.batchId) {
+    // Mark batch as failed only if we haven't already responded
+    if (!res.headersSent && req.body?.batchId) {
       const meta = progressMap.get(req.body.batchId);
       if (meta) {
         meta.status = 'failed';
@@ -188,15 +218,19 @@ function getBatchProgress(req, res) {
     return res.status(404).json({ error: 'Batch not found' });
   }
 
-  const pct = meta.total ? Math.round((meta.done / meta.total) * 100) : 0;
+  const pct = meta.status === 'complete'
+    ? 100
+    : (meta.total ? Math.round((meta.done / meta.total) * 100) : 0);
 
   return res.json({
     batchId,
-    status:  meta.status,
-    done:    meta.done,
-    total:   meta.total,
-    percent: pct,
-    summary: meta.summary || null,
+    status:      meta.status,
+    done:        meta.done,
+    total:       meta.total,
+    percent:     pct,
+    summary:     meta.summary  || null,
+    error:       meta.error    || null,
+    downloadUrl: meta.status === 'complete' ? `/api/download/${batchId}` : null,
   });
 }
 

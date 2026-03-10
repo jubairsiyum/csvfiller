@@ -135,6 +135,7 @@ async function fillPDF(templateBytes, dataRow, fieldMapping) {
  * @param {object[]} rows          — Output of csvService.parseCSV
  * @param {object}   fieldMapping  — { pdfField: csvColumn }
  * @param {string}   batchDir      — Absolute output directory for this batch
+ * @param {string}   templatePath  — Absolute path to the PDF template file
  * @param {Function} [onProgress]  — Called after each row: (done, total, row)
  * @returns {Promise<BatchSummary>}
  *
@@ -145,11 +146,17 @@ async function fillPDF(templateBytes, dataRow, fieldMapping) {
  * @property {object[]} errors   — [{ row, file, message }]
  * @property {object[]} warnings — [{ row, file, messages[] }]
  */
-async function processBatch(rows, fieldMapping, batchDir, onProgress = null) {
+async function processBatch(rows, fieldMapping, batchDir, templatePath, onProgress = null) {
   // Ensure output directory exists
   await fs.promises.mkdir(batchDir, { recursive: true });
 
-  const templateBytes = await loadTemplate();
+  if (!fs.existsSync(templatePath)) {
+    throw Object.assign(
+      new Error(`PDF template not found: ${templatePath}`),
+      { statusCode: 500 }
+    );
+  }
+  const templateBytes = await fs.promises.readFile(templatePath);
 
   const summary = {
     total:    rows.length,
