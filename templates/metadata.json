@@ -31,8 +31,12 @@
         "page": 0
       }
     ],
-    "mapping": {},
-    "createdAt": "2026-03-10T05:43:13.707Z"
+    "mapping": {
+      "family_name": "Name",
+      "given_name": "Email"
+    },
+    "createdAt": "2026-03-10T05:43:13.707Z",
+    "updatedAt": "2026-03-10T06:04:53.634Z"
   },
   {
     "id": "52aa6f06-3bcf-43b6-a766-6636bb6df4a7",

@@ -29,6 +29,7 @@ const state = {
     scale:         1.5,
     pendingMapping:{},     // { pdfFieldName: csvColumnName } — staging
     activeField:   null,   // field currently highlighted in list
+    csvColumns:    [],     // columns from CSV uploaded in the editor
   },
   generator: {
     templateId:    null,
@@ -386,6 +387,7 @@ const Editor = {
 
   async open(templateId) {
     View.show('editor', { title: 'Loading…' });
+    EditorCsv.reset();  // clear any previously loaded CSV
     document.getElementById('field-overlay').innerHTML = '';
     document.getElementById('fields-list').innerHTML =
       '<div class="loading-placeholder"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg> Loading fields…</div>';
@@ -558,10 +560,12 @@ const Editor = {
       this.renderPage(field.page + 1);
     }
 
-    // Show known CSV columns as chips (from last generator upload)
+    // Show known CSV columns as chips — prefer editor CSV, fall back to generator CSV
     const chips      = document.getElementById('csv-col-chips');
     const hint       = document.getElementById('csv-columns-hint');
-    const csvCols    = state.generator.csvColumns;
+    const csvCols    = state.editor.csvColumns.length
+      ? state.editor.csvColumns
+      : state.generator.csvColumns;
     if (csvCols.length) {
       hint.classList.remove('hidden');
       chips.innerHTML = csvCols.map(c =>
@@ -945,6 +949,61 @@ const Generator = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// EDITOR CSV — upload CSV in the mapping editor to detect columns
+// ═══════════════════════════════════════════════════════════════════════════
+const EditorCsv = {
+  init() {
+    const input = document.getElementById('editor-csv-input');
+    const bar   = document.getElementById('editor-csv-bar');
+    document.getElementById('btn-editor-upload-csv').addEventListener('click', () => input.click());
+    input.addEventListener('change', () => {
+      if (input.files[0]) this.load(input.files[0]);
+    });
+    setupDropZone(bar, (f) => {
+      if (f.name.toLowerCase().endsWith('.csv')) this.load(f);
+      else Toast.error('Please drop a .csv file.');
+    });
+    document.getElementById('btn-editor-clear-csv').addEventListener('click', () => this.clear());
+  },
+
+  async load(file) {
+    const btn = document.getElementById('btn-editor-upload-csv');
+    btn.disabled    = true;
+    btn.textContent = '…';
+    try {
+      const form = new FormData();
+      form.append('csv', file);
+      const res = await Api.upload('/api/upload', form);
+      state.editor.csvColumns = res.columns || [];
+      this._render(file.name, res.columns);
+      Toast.success(`CSV loaded — ${res.columns.length} column${res.columns.length !== 1 ? 's' : ''} detected.`);
+    } catch (err) {
+      Toast.error(`CSV load failed: ${err.message}`);
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Browse';
+    }
+  },
+
+  _render(filename, cols) {
+    document.getElementById('editor-csv-idle').classList.add('hidden');
+    document.getElementById('editor-csv-loaded').classList.remove('hidden');
+    document.getElementById('editor-csv-label').textContent =
+      `${filename}  ·  ${cols.length} column${cols.length !== 1 ? 's' : ''}`;
+  },
+
+  clear() {
+    state.editor.csvColumns = [];
+    document.getElementById('editor-csv-input').value = '';
+    document.getElementById('editor-csv-idle').classList.remove('hidden');
+    document.getElementById('editor-csv-loaded').classList.add('hidden');
+    document.getElementById('editor-csv-label').textContent = '—';
+  },
+
+  reset() { this.clear(); },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 function esc(str) {
@@ -983,6 +1042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   Toast.init();
   Modal.init();
   Editor.initControls();
+  EditorCsv.init();
   Generator.init();
   UploadTemplate.init();
 

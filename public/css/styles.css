@@ -764,6 +764,46 @@ ul { list-style: none; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-4); }
 
+/* ── Editor CSV bar ────────────────────────────────────────────────────── */
+.editor-csv-bar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ecb-idle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-4);
+}
+.ecb-idle svg { width: 14px; height: 14px; flex-shrink: 0; }
+.ecb-idle span { flex: 1; }
+.ecb-loaded {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--success);
+}
+.ecb-loaded > svg { width: 14px; height: 14px; flex-shrink: 0; }
+.ecb-loaded > span {
+  flex: 1;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.ecb-clear-btn {
+  width: 22px !important;
+  height: 22px !important;
+  border: none !important;
+  background: transparent !important;
+  flex-shrink: 0;
+}
+.ecb-clear-btn svg { width: 13px; height: 13px; }
+
 /* ── Responsive adjustments ─────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .fields-panel { width: 260px; }
